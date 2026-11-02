@@ -61,7 +61,7 @@ class EditableAvatar
       btn.halign = :end
       btn.valign = :end
       btn.add_css_class('circular')
-      btn.add_css_class('osd')
+      btn.add_css_class('contacts-cutout-button')
     end
   end
 

@@ -61,8 +61,9 @@ Settings.new.then do |settings|
     App.new(
       backend:            backend,
       settings:           settings,
-      startup_query:      options[:search] || options[:email],
+      startup_query:      options[:search],
       startup_contact_id: options[:individual],
+      startup_email:      options[:email],
             # On first run the setup wizard offers these instead of opening
             # straight into the main window.
       setup_backends:     BACKENDS.values.map(&:call),

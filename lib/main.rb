@@ -64,6 +64,62 @@ class App
     'quit'             => ['<Control>q', '<Control>w'],
   }.freeze
 
+  # The width below which the split view collapses to a single pane, matching
+  # the Adw.Breakpoint at the end of data/ui/contacts-main-window.blp.
+  NARROW_CONDITION = 'max-width: 560sp'
+
+  # Ported from data/style.css, which upstream ships inside its GResource and
+  # installs from Application.startup. Only the rules whose classes this port
+  # actually puts on a widget are carried over; upstream's remaining selectors
+  # target the per-property editor widgets it builds from Folks chunks, which
+  # have no counterpart here.
+  STYLESHEET = <<~CSS
+    /* A little cutout around an overlayed circular button. */
+    .contacts-cutout-button {
+      background-color: var(--window-bg-color);
+      color: var(--window-fg-color);
+      border-radius: 9999px;
+      padding: 2px;
+    }
+
+    /* Contact list */
+    .contact-list header {
+      padding: 0 6px;
+    }
+
+    .contact-list-row {
+      padding: 6px 0;
+    }
+
+    /* Contact sheet and editor */
+    .contacts-sheet-container,
+    .contacts-contact-editor-container {
+      margin: 24px 12px 24px 12px;
+    }
+
+    .contacts-sheet,
+    .contact-editor-group {
+      border-spacing: 24px;
+    }
+
+    .contacts-sheet-header,
+    .contacts-editor-header {
+      border-spacing: 12px;
+      /* 12px on top of the 24px border spacing of .contacts-sheet, to mimick
+       * the 36px statuspage leaves between a header and its contents. */
+      margin: 0 0 12px 0;
+    }
+
+    .contacts-qr-code-dialog-qr-image {
+      background: #fff;
+      padding: 12px;
+    }
+
+    .favorite-button {
+      font-weight: normal;
+    }
+  CSS
+
   attr_reader :settings, :operations
 
   # app_id/flags are injectable so tests can register a throwaway, non-unique
@@ -72,7 +128,7 @@ class App
   # does not flash a window onto the user's desktop for every example.
   def initialize(backend: nil, app_id: APP_ID, flags: :default_flags, present: true,
                  settings: nil, startup_query: nil, startup_contact_id: nil,
-                 search_provider: true, setup_backends: nil)
+                 startup_email: nil, search_provider: true, setup_backends: nil)
     @backend = backend
     @setup_backends = setup_backends
     @app_id = app_id
@@ -81,6 +137,7 @@ class App
     @settings = settings || Settings.new
     @startup_query = startup_query
     @startup_contact_id = startup_contact_id
+    @startup_email = startup_email
     @search_provider_enabled = search_provider
     @operations = Operations::OperationList.new
     @state = NORMAL
@@ -96,11 +153,13 @@ class App
           next
         end
 
+        install_stylesheet
+
         @store = ContactStore.new(backend: @backend, sort_on_surname: @settings['sort-on-surname'])
-        @store.load
 
         window.tap do |win|
           win.content = toast_overlay
+          win.add_breakpoint(narrow_breakpoint)
 
           toast_overlay.tap do |to|
             to.child = content_box
@@ -174,13 +233,21 @@ class App
             end
           end
 
-          @store.selection_model.signal_connect('notify::selected') { on_selection_changed }
-          @store.multi_selection_model.signal_connect('selection-changed') { update_selection_ui }
-          win.signal_connect('close-request') { @settings.remember(win); false }
+          win.signal_connect('close-request') { on_close_request }
         end
+
+        # The widget tree is built before the address book is read, so the
+        # list pane's spinner page is what the user sees while the read runs —
+        # upstream shows the same Adw.Spinner until its aggregator settles.
+        # The store's own signals are connected only afterwards, so the first
+        # batch of contacts arriving does not read as a user selection.
+        @store.load
+        contacts_list.loading = false
+        connect_store_signals
 
         setup_actions
         register_search_provider
+        check_primary_address_book
         apply_startup_query
         update_ui_for_state
         show_window
@@ -216,6 +283,22 @@ class App
   end
 
   def toast_overlay = @toast_overlay ||= Adwaita::ToastOverlay.new
+
+  # Below 560sp the sidebar and the content pane share the window and the
+  # split view navigates between them, which is upstream's one breakpoint.
+  def narrow_breakpoint
+    @narrow_breakpoint ||= Adwaita::Breakpoint.new(
+      Adwaita::BreakpointCondition.parse(NARROW_CONDITION),
+    ).tap do |bp|
+      bp.add_setter(content_box, 'collapsed', true)
+    end
+  end
+
+  def style_provider
+    @style_provider ||= Gtk::CssProvider.new.tap do |provider|
+      provider.load_from_data(STYLESHEET)
+    end
+  end
 
   def content_box
     @content_box ||= Adwaita::NavigationSplitView.new.tap do |cb|
@@ -344,6 +427,7 @@ class App
       btn.label = '_Favourite'
       btn.use_underline = true
       btn.action_name = 'win.mark-favorite'
+      btn.add_css_class('favorite-button')
     end
   end
 
@@ -450,6 +534,135 @@ class App
     def show_window
       if @present
         window.present
+      end
+    end
+
+    def connect_store_signals
+      @store.selection_model.signal_connect('notify::selected') { on_selection_changed }
+      @store.multi_selection_model.signal_connect('selection-changed') { update_selection_ui }
+    end
+
+  # Upstream loads data/style.css out of its GResource at startup; the
+  # stylesheet is a constant here, but it lands on the display at the same
+  # application priority, so the user's own theme still wins.
+    def install_stylesheet
+      Gdk::Display.default.then do |display|
+        if display
+          Gtk::StyleContext.add_provider_for_display(
+            display,
+            style_provider,
+            Gtk::StyleProvider::PRIORITY_APPLICATION,
+          )
+        end
+      end
+    end
+
+  # --- Alert dialogs ------------------------------------------------------
+
+  # Upstream's MainWindow.on_close_request: closing the window mid-edit asks
+  # before throwing the edit away. Returning true blocks the close.
+    def on_close_request
+      if editing?
+        confirm_discard_changes
+        true
+      else
+        @settings.remember(window)
+        false
+      end
+    end
+
+    def confirm_discard_changes
+      alert_dialog(
+        'Discard changes?',
+        'Changes which are not saved will be permanently lost.',
+      ).tap do |dialog|
+        dialog.add_response('cancel', '_Cancel')
+        dialog.add_response('discard', '_Discard')
+        dialog.default_response = 'cancel'
+        dialog.close_response = 'cancel'
+        dialog.set_response_appearance('discard', Adwaita::ResponseAppearance::DESTRUCTIVE)
+
+        dialog.signal_connect('response') do |_, response|
+          if response == 'discard'
+            action_cancel
+            @settings.remember(window)
+            window.destroy
+          end
+        end
+
+        present_dialog(dialog)
+      end
+    end
+
+  # Upstream's "Contact not found" alert, raised when --individual or --email
+  # names somebody who is not in the address book.
+    def show_contact_not_found(body)
+      alert_dialog('Contact not found', body).tap do |dialog|
+        dialog.add_response('close', '_Close')
+        dialog.default_response = 'close'
+        dialog.close_response = 'close'
+        present_dialog(dialog)
+      end
+    end
+
+  # Upstream's "Primary address book not found", shown when the book new
+  # contacts would be written to cannot be written to. Here that means the
+  # chosen backend is read-only or its location is not writable.
+    def check_primary_address_book
+      unless primary_address_book_writable?
+        alert_dialog('Primary address book not found', nil).tap do |dialog|
+          dialog.body = 'Contacts can\'t find the configured primary address book. ' \
+                        'You might experience issues creating or editing contacts'
+          dialog.add_response('preferences', 'Go To _Preferences')
+          dialog.add_response('cancel', '_Cancel')
+          dialog.default_response = 'preferences'
+          dialog.close_response = 'cancel'
+          dialog.set_response_appearance('preferences', Adwaita::ResponseAppearance::SUGGESTED)
+
+          dialog.signal_connect('response') do |_, response|
+            if response == 'preferences'
+              action_show_preferences
+            end
+          end
+
+          present_dialog(dialog)
+        end
+      end
+    end
+
+    def primary_address_book_writable?
+      @store.backend.then do |backend|
+        if backend.readonly?
+          false
+        else
+          writable_location?(backend.location)
+        end
+      end
+    end
+
+  # A backend's location is a file that may not exist yet, in which case the
+  # directory that will hold it is what has to be writable.
+    def writable_location?(location)
+      location.to_s.then do |path|
+        if path.empty?
+          true
+        elsif File.exist?(path)
+          File.writable?(path)
+        else
+          File.writable?(File.dirname(path))
+        end
+      end
+    end
+
+    def alert_dialog(heading, body) = Adwaita::AlertDialog.new(heading, body)
+
+  # Held in an ivar so the dialog is not collected while it is on screen, and
+  # suppressed entirely when the window was never mapped — a test run has
+  # nowhere to put it.
+    def present_dialog(dialog)
+      @alert_dialog = dialog
+      if @present
+        dialog.present(window)
       end
     end
 
@@ -871,6 +1084,22 @@ class App
       @store.contacts.find { |c| c.id == id }.then do |contact|
         if contact
           @store.select_contact(contact)
+        else
+          show_contact_not_found("No contact with id #{id} found")
+        end
+      end
+    end
+
+  # Upstream's Application.show_email: --email selects the contact carrying
+  # that address, and says so when nobody does.
+    def show_contact_by_email(address)
+      address.to_s.downcase.then do |needle|
+        @store.contacts.find { |c| c.emails.any? { |e| e.value.to_s.downcase == needle } }.then do |contact|
+          if contact
+            @store.select_contact(contact)
+          else
+            show_contact_not_found("No contact with email address #{address} found")
+          end
         end
       end
     end
@@ -890,6 +1119,12 @@ class App
       @startup_contact_id.then do |id|
         if id
           show_contact_by_id(id)
+        end
+      end
+
+      @startup_email.then do |address|
+        if address && !address.to_s.empty?
+          show_contact_by_email(address)
         end
       end
     end

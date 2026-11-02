@@ -196,6 +196,18 @@ class AvatarSelector < Adwaita::Dialog
       end
     rescue StandardError, GLib::Error => e
       warn "Could not load image: #{e.message}"
+      report_failure
+    end
+
+  # Upstream's avatar selector shows this when the picked file cannot be turned
+  # into an avatar; it has no heading, only the body.
+    def report_failure
+      @failure_dialog = Adwaita::AlertDialog.new(nil, 'Failed to set avatar.').tap do |dialog|
+        dialog.add_response('close', '_Close')
+        dialog.default_response = 'close'
+        dialog.close_response = 'close'
+        dialog.present(self)
+      end
     end
 
     def select(avatar)

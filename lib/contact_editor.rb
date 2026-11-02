@@ -3,8 +3,10 @@
 require 'adwaita'
 require 'securerandom'
 require_relative 'type_set'
+require_relative 'type_combo_row'
 require_relative 'im_service'
 require_relative 'editable_avatar'
+require_relative 'birthday_editor'
 
 # ContactEditor is the in-place form for creating and editing a contact.
 #
@@ -70,6 +72,9 @@ class ContactEditor
       birthday_group.tap do |group|
         group.add(birthday_row)
         birthday_row.text = format_birthday(@contact&.birthday)
+        birthday_row.add_suffix(birthday_button)
+
+        birthday_button.signal_connect('clicked') { open_birthday_editor }
       end
 
       init_typed_fields
@@ -98,10 +103,8 @@ class ContactEditor
 
   def container
     @container ||= Gtk::Box.new(:vertical, 24).tap do |c|
-      c.margin_top = 24
-      c.margin_bottom = 24
-      c.margin_start = 12
-      c.margin_end = 12
+      c.add_css_class('contacts-contact-editor-container')
+      c.add_css_class('contact-editor-group')
     end
   end
 
@@ -132,6 +135,19 @@ class ContactEditor
   def nickname_row = @nickname_row ||= entry_row('Nickname', icon: 'avatar-default-symbolic')
   def alias_row = @alias_row ||= entry_row('Alias', icon: 'avatar-default-symbolic')
   def birthday_row = @birthday_row ||= entry_row('Birthday (YYYY-MM-DD)', icon: 'birthday-symbolic')
+
+  # Upstream's birthday property is an activatable row that opens the
+  # BirthdayEditor; the entry row above stays typeable, and this button is the
+  # way to the dialog — which is also the only way to clear a birthday with one
+  # gesture.
+  def birthday_button
+    @birthday_button ||= Gtk::Button.new.tap do |btn|
+      btn.icon_name = 'calendar-symbolic'
+      btn.tooltip_text = 'Pick Birthday'
+      btn.valign = :center
+      btn.add_css_class('flat')
+    end
+  end
 
   # The five N components, in the order the editor shows them.
   def structured_name_rows
@@ -203,7 +219,7 @@ class ContactEditor
 
     def add_typed_row(field, value, type)
       TypeSet.for_field(field).then do |type_set|
-        { entry_row: nil, type: type, added_new: false }.tap do |row_data|
+        { entry_row: nil, type_row: nil, added_new: false }.tap do |row_data|
           Adwaita::EntryRow.new.tap do |row|
             row.title = TYPED_FIELDS[field][:title]
             row.text = value
@@ -211,7 +227,6 @@ class ContactEditor
             row.add_prefix(Gtk::Image.new(icon_name: TYPED_FIELDS[field][:icon]))
             row_data[:entry_row] = row
 
-            row.add_suffix(type_dropdown(type_set, row_data))
             row.signal_connect('changed') do
               ensure_trailing_blank_row(row_data, @rows[field]) do
                 add_typed_row(field, '', type_set.default.display_name)
@@ -221,80 +236,15 @@ class ContactEditor
             group_for(field).add(row)
           end
 
+          # Upstream's ContactEditorProperty.add_type_combo: the label sits in
+          # its own row underneath the value it labels.
+          TypeComboRow.new(type_set, type).tap do |combo|
+            row_data[:type_row] = combo
+            group_for(field).add(combo)
+          end
+
           @rows[field] << row_data
         end
-      end
-    end
-
-  # A dropdown over the field's TypeSet, whose last entry ("Other…") swaps in
-  # an entry for a custom label — upstream's TypeDescriptor.custom.
-    def type_dropdown(type_set, row_data)
-      Gtk::DropDown.new.tap do |dropdown|
-        dropdown.model = Gtk::StringList.new(labels_including(type_set, row_data[:type]))
-        dropdown.valign = :center
-        dropdown.selected = selected_index(type_set, row_data[:type])
-
-        dropdown.signal_connect('notify::selected') do
-          dropdown.model.get_string(dropdown.selected).then do |label|
-            if label == TypeSet::OTHER_LABEL
-              prompt_for_custom_label(type_set, row_data, dropdown)
-            else
-              row_data[:type] = label
-            end
-          end
-        end
-      end
-    end
-
-  # A custom label the contact already carries has to appear in the model, or
-  # the dropdown could not show it.
-    def labels_including(type_set, type)
-      type_set.index_of(type) ? type_set.labels : type_set.descriptors.map(&:display_name) + [type, TypeSet::OTHER_LABEL]
-    end
-
-    def selected_index(type_set, type)
-      type_set.index_of(type) || type_set.descriptors.length
-    end
-
-  # Shown when the user picks "Other…": a small dialog collecting the label.
-    def prompt_for_custom_label(type_set, row_data, dropdown)
-      Adwaita::AlertDialog.new('Custom Type', 'Enter a label for this field').tap do |dialog|
-        custom_label_entry(row_data).tap do |entry|
-          dialog.extra_child = entry
-          dialog.add_response('cancel', '_Cancel')
-          dialog.add_response('save', '_Save')
-          dialog.default_response = 'save'
-          dialog.set_response_appearance('save', Adwaita::ResponseAppearance::SUGGESTED)
-
-          dialog.signal_connect('response') do |_, response|
-            if response == 'save' && !entry.text.strip.empty?
-              row_data[:type] = entry.text.strip
-              apply_custom_label(type_set, dropdown, row_data)
-            else
-              dropdown.selected = selected_index(type_set, row_data[:type])
-            end
-          end
-
-          dialog.present(dropdown.root)
-        end
-      end
-    end
-
-    def custom_label_entry(row_data)
-      Gtk::Entry.new.tap do |entry|
-        entry.text = row_data[:type].to_s
-        entry.margin_start = 12
-        entry.margin_end = 12
-        entry.margin_top = 6
-        entry.margin_bottom = 6
-      end
-    end
-
-  # Puts the custom label into the dropdown's model so it is what the user sees.
-    def apply_custom_label(type_set, dropdown, row_data)
-      (type_set.descriptors.map(&:display_name) + [row_data[:type], TypeSet::OTHER_LABEL]).then do |labels|
-        dropdown.model = Gtk::StringList.new(labels)
-        dropdown.selected = labels.length - 2
       end
     end
 
@@ -437,11 +387,14 @@ class ContactEditor
 
   # --- Collection ---------------------------------------------------------
 
+  # The label is read off the TypeComboRow rather than a copy kept beside it,
+  # so a label set programmatically — from a vCard's TYPE parameters, say —
+  # reaches the collected data without having to fire the row's callback.
     def collect_typed_values(rows)
       rows.filter_map do |row_data|
         row_data[:entry_row].text.strip.then do |value|
           unless value.empty?
-            { value: value, type: row_data[:type] }
+            { value: value, type: row_data[:type_row].label }
           end
         end
       end
@@ -490,6 +443,22 @@ class ContactEditor
     end
 
     def update_avatar_text = editable_avatar.text = name_row.text
+
+  # Held in an ivar so the dialog is not collected while it is on screen.
+    def open_birthday_editor
+      @birthday_editor = BirthdayEditor.new(
+        parse_birthday(birthday_row.text),
+        method(:on_birthday_chosen),
+      ).tap do |dialog|
+        dialog.build
+        dialog.present(birthday_row.root)
+      end
+    end
+
+    def on_birthday_chosen(date)
+      birthday_row.text = format_birthday(date)
+      @birthday_editor = nil
+    end
 
     def format_birthday(birthday)
       case birthday

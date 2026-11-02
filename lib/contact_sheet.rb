@@ -3,6 +3,7 @@
 require 'adwaita'
 require 'uri'
 require_relative 'contact_sheet_row'
+require_relative 'avatar'
 require_relative 'im_service'
 
 # ContactSheet displays the stored information of a single contact.
@@ -36,12 +37,6 @@ class ContactSheet
         h.append(avatar)
         h.append(name_label)
         h.append(role_label)
-
-        avatar.tap do |av|
-          av.text = @contact.display_name
-          av.show_initials = true
-          av.custom_image = @contact.avatar&.texture
-        end
 
         name_label.label = @contact.display_name
         role_label.label = @contact.role_display
@@ -110,22 +105,19 @@ class ContactSheet
 
   def container
     @container ||= Gtk::Box.new(:vertical, 18).tap do |c|
-      c.margin_top = 24
-      c.margin_bottom = 24
-      c.margin_start = 12
-      c.margin_end = 12
+      c.add_css_class('contacts-sheet-container')
+      c.add_css_class('contacts-sheet')
     end
   end
 
   def header
     @header ||= Gtk::Box.new(:vertical, 6).tap do |h|
       h.halign = :center
-      h.margin_top = 12
-      h.margin_bottom = 12
+      h.add_css_class('contacts-sheet-header')
     end
   end
 
-  def avatar = @avatar ||= Adwaita::Avatar.new(PROFILE_SIZE, nil, true)
+  def avatar = @avatar ||= ContactAvatar.new(PROFILE_SIZE, @contact)
 
   def name_label
     @name_label ||= Gtk::Label.new.tap do |l|

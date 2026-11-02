@@ -64,6 +64,7 @@ class QrCodeDialog < Adwaita::Dialog
     @qr_image ||= Gtk::Picture.new.tap do |picture|
       picture.set_size_request(IMAGE_SIZE, IMAGE_SIZE)
       picture.add_css_class('card')
+      picture.add_css_class('contacts-qr-code-dialog-qr-image')
     end
   end
 

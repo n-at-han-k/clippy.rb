@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'adwaita'
+require_relative 'avatar'
 
 # ContactList displays the list of contacts in the sidebar.
 #
@@ -15,7 +16,18 @@ class ContactList
     @store = store
     @on_selection_changed = on_selection_changed
     @selection_mode = false
+    @loading = true
     @selection_bindings = {}
+  end
+
+  def loading? = @loading
+
+  # Upstream's list_pane_stack starts on its Adw.Spinner page and only shows
+  # the list once the aggregator is quiescent; this port flips the same flag
+  # when the store has finished reading the address book.
+  def loading=(value)
+    @loading = value
+    update_visible_page
   end
 
   def selection_mode? = @selection_mode
@@ -38,6 +50,7 @@ class ContactList
 
   def build
     stack.tap do |s|
+      s.add_named(loading_page, 'loading')
       s.add_named(scroller, 'list')
       s.add_named(empty_page, 'empty')
       s.add_named(no_results_page, 'no-results')
@@ -72,7 +85,9 @@ class ContactList
   # Shows the list, the "no contacts yet" page or the "no results" page,
   # depending on whether the address book or just the current search is empty.
   def update_visible_page
-    if @store.n_visible.positive?
+    if @loading
+      stack.visible_child_name = 'loading'
+    elsif @store.n_visible.positive?
       stack.visible_child_name = 'list'
     elsif @store.empty?
       stack.visible_child_name = 'empty'
@@ -96,6 +111,17 @@ class ContactList
   def list_view
     @list_view ||= Gtk::ListView.new.tap do |lv|
       lv.add_css_class('navigation-sidebar')
+      lv.add_css_class('contact-list')
+    end
+  end
+
+  # Upstream's spinner page, dimmed and centred in the list pane.
+  def loading_page
+    @loading_page ||= Adwaita::Spinner.new.tap do |spinner|
+      spinner.add_css_class('dim-label')
+      spinner.halign = :center
+      spinner.valign = :center
+      spinner.set_size_request(32, 32)
     end
   end
 
@@ -125,10 +151,7 @@ class ContactList
       f.signal_connect('bind') do |_, item|
         item.item.then do |contact|
           item.child.tap do |box|
-            avatar_of(box).tap do |avatar|
-              avatar.text = contact.display_name
-              avatar.show_initials = true
-            end
+            avatar_of(box).contact = contact
 
             checkbox_of(box).tap do |checkbox|
               checkbox.visible = @selection_mode
@@ -143,8 +166,6 @@ class ContactList
               end
               labels.first_child.next_sibling.label = subtitle_for(contact)
             end
-
-            avatar_of(box).custom_image = contact.avatar&.texture
 
             # The star always occupies its slot so rows never reflow; only the
             # glyph and its emphasis change.
@@ -191,8 +212,7 @@ class ContactList
   # per recycled row, so this cannot be memoized.
     def row_template
       Gtk::Box.new(:horizontal, 12).tap do |box|
-        box.margin_top = 6
-        box.margin_bottom = 6
+        box.add_css_class('contact-list-row')
         box.margin_start = 12
         box.margin_end = 12
 
@@ -207,7 +227,7 @@ class ContactList
                   end,
         )
 
-        box.append(Adwaita::Avatar.new(AVATAR_SIZE, nil, true))
+        box.append(ContactAvatar.new(AVATAR_SIZE))
 
         box.append(
           Gtk::Box.new(:vertical, 0).tap do |labels|

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'adwaita'
+require_relative 'accounts_list'
 
 # SetupWindow is the first-run wizard asking which address book new contacts
 # should go into.
@@ -42,11 +43,7 @@ class SetupWindow
           page.child = clamp
 
           clamp.tap do |c|
-            c.child = address_book_list
-
-            address_book_list.tap do |list|
-              @backends.each { |backend| list.add(address_book_row(backend)) }
-            end
+            c.child = accounts_list.build
           end
         end
       end
@@ -104,45 +101,17 @@ class SetupWindow
     end
   end
 
-  def address_book_list
-    @address_book_list ||= Adwaita::PreferencesGroup.new.tap do |group|
-      group.title = 'Address Books'
-    end
+  # Upstream's setup window holds the very same AccountsList the preferences
+  # window does, which is why the widget is its own class.
+  def accounts_list
+    @accounts_list ||= AccountsList.new(@backends, primary: @selected, on_selected: method(:on_selected))
   end
 
   private
 
-  # One selectable row per available backend; the radio buttons share a group
-  # so exactly one is ever active.
-    def address_book_row(backend)
-      Adwaita::ActionRow.new.tap do |row|
-        row.title = backend.display_name
-        row.subtitle = backend.location
-        row.activatable = true
-
-        selection_button(backend).tap do |button|
-          row.add_prefix(button)
-          row.activatable_widget = button
-        end
-      end
-    end
-
-    def selection_button(backend)
-      Gtk::CheckButton.new.tap do |button|
-        button.valign = :center
-        if @first_button
-          button.group = @first_button
-        end
-        button.active = backend.equal?(@selected)
-        @first_button ||= button
-
-        button.signal_connect('toggled') do
-          if button.active?
-            @selected = backend
-          end
-          done_button.sensitive = !@selected.nil?
-        end
-      end
+    def on_selected(backend)
+      @selected = backend
+      done_button.sensitive = !@selected.nil?
     end
 
   # The window is closed rather than destroyed, and the callback runs first:
