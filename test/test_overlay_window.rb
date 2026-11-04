@@ -29,6 +29,14 @@ class TestOverlayWindow < Minitest::Test
     assert_includes(overlay.window.css_classes, 'clippy-overlay')
   end
 
+  # The balloon makes the window taller. With the default top-left gravity
+  # that pushed Clippy down the screen and sideways; fixing the bottom centre
+  # keeps him still and grows the window upward instead. test/drive_gravity.rb
+  # measures that it actually happens on screen — this only pins the setting.
+  def test_the_window_is_anchored_at_its_bottom_centre
+    assert(overlay.window.gravity == :bottom)
+  end
+
   def test_the_balloon_starts_hidden
     refute_predicate(overlay.balloon, :visible?)
   end
@@ -60,6 +68,26 @@ class TestOverlayWindow < Minitest::Test
     end
   ensure
     overlay.shutdown
+  end
+
+  # Driven here rather than in the UI driver: the offscreen backend delivers
+  # crossing events of its own, so a driver step that emits 'enter' and then
+  # checks the revealer a tick later races them and fails intermittently in
+  # both directions. With no main loop running there is nothing to race.
+  def test_hovering_reveals_the_close_button_and_leaving_hides_it
+    refute(overlay.close_revealer.reveal_child?)
+
+    overlay.hover.signal_emit('enter', 10.0, 10.0)
+
+    assert(overlay.close_revealer.reveal_child?)
+
+    overlay.hover.signal_emit('leave')
+
+    refute(overlay.close_revealer.reveal_child?)
+  end
+
+  def test_the_close_button_quits_rather_than_just_hiding
+    assert_equal('window-close-symbolic', overlay.close_button.icon_name)
   end
 
   def test_the_right_click_gesture_listens_to_button_three

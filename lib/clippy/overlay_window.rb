@@ -117,6 +117,17 @@ module Clippy
         win.title = "Clippy"
         win.decorated = false
         win.resizable = false
+        # Gravity names the point that stays put; the window grows the other
+        # way. Without this the top-left is fixed, so opening the balloon —
+        # which makes the window taller — pushed Clippy bodily down the screen
+        # and shoved him sideways as the bubble widened past him. He sits at
+        # the bottom centre of the column, so fixing the bottom centre keeps
+        # him still and lets the balloon expand up and out around him.
+        #
+        # gtk_window_set_gravity is a GTK 4.20 addition. GTK3's gravity was
+        # removed in GTK4 and this is not the same API; there is no older
+        # equivalent, which is why a frameless overlay was so awkward before.
+        win.gravity = :bottom
         # Transparency is CSS (see Clippy::Styles); the class is the hook.
         win.add_css_class("clippy-overlay")
       end

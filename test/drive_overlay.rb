@@ -189,34 +189,19 @@ GtkDriver.drive(app, shots: 'tmp/shots') do |d, clippy|
     d.check('still alive') { !clippy.overlay.sprite.picture.paintable.nil? }
   end
 
-  d.step('close button and hover reveal are wired') do
-    d.check('close button has an icon') { clippy.overlay.close_button.icon_name == 'window-close-symbolic' }
-    # Start from a known state: the backend may deliver a crossing event of
-    # its own when the window maps, so the initial-state assertion lives in
-    # the build step and this one tests only the enter/leave wiring.
-    clippy.overlay.close_revealer.reveal_child = false
-    # Entering the overlay is what the pointer does; drive the controller's
-    # effect rather than the revealer, so the wiring is under test too.
-    clippy.overlay.hover.signal_emit('enter', 10.0, 10.0)
-  end
-
-  d.step('the close button is revealed and rendered') do
-    d.check('revealer opened on pointer enter') { clippy.overlay.close_revealer.reveal_child? }
-    d.check('button has a real allocation') do
-      clippy.overlay.close_button.allocated_width > 8
-    end
-    puts "      button: #{clippy.overlay.close_button.allocated_width}x#{clippy.overlay.close_button.allocated_height}"
-    puts "      icon theme has window-close-symbolic: " \
-         "#{Gtk::IconTheme.get_for_display(Gdk::Display.default).has_icon?('window-close-symbolic')}"
+  # The close button's hover wiring is asserted in test_overlay_window.rb
+  # instead: the offscreen backend synthesises crossing events, which race an
+  # emitted 'enter' and made this fail intermittently in both directions.
+  # What still needs a running loop is that the button renders at all.
+  d.step('the close button renders') do
+    clippy.overlay.close_revealer.reveal_child = true
   end
 
   d.step('screenshot: the close button') do
+    d.check('button has a real allocation') do
+      clippy.overlay.close_button.allocated_width > 8
+    end
     d.shot('04-close-button')
-  end
-
-  d.step('leaving hides it again') do
-    clippy.overlay.hover.signal_emit('leave')
-    d.check('revealer closed on pointer leave') { clippy.overlay.close_revealer.reveal_child? == false }
   end
 
   d.step('shutdown releases the frame and balloon timers') do

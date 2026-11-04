@@ -101,6 +101,14 @@ Two details are easy to get wrong and are worth knowing about:
 single Clippy animation range from 10ms to 1200ms, so the player schedules one
 timeout per frame. A fixed-rate loop renders the animations visibly wrong.
 
+**The window is anchored at its bottom centre.** The balloon makes the window
+taller, and a GTK window grows away from whichever point its gravity fixes —
+by default the top-left, which meant Clippy slid *down* the screen every time
+he spoke, and sideways as the bubble widened past him. `Gtk::Window#gravity =
+:bottom` fixes the bottom centre instead, so the balloon expands upward around
+a Clippy who does not move. This is a GTK 4.20 addition and is not GTK3's
+gravity, which GTK4 had removed; before it there was no clean way to do this.
+
 **Animations branch.** 91 frames carry a weighted `branching` table and 267
 carry an `exitBranch`. `Greeting` has a 40% chance of jumping from frame 0 to
 frame 30, which is why it runs 3.7s most of the time and 1.0s the rest. This is
@@ -121,8 +129,11 @@ produce real screenshots:
 env -u DISPLAY -u WAYLAND_DISPLAY ruby test/drive_overlay.rb   # 34 checks + screenshots in tmp/shots/
 ruby test/test_agent.rb                                        # 10 — loading the sheet and cutting frames
 ruby test/test_sprite.rb                                       # 10 — branching and exit rules
-ruby test/test_overlay_window.rb                               #  8 — how the window is put together
+ruby test/test_overlay_window.rb                               # 11 — how the window is put together
 ruby test/test_always_on_top.rb                                #  7 — backend detection
+
+# Needs a real display and a window manager, so it is not part of the above:
+nix shell nixpkgs#xwininfo --command env GDK_BACKEND=x11 ruby test/drive_gravity.rb
 ```
 
 `rubocop` enforces the custom cops in `cops/`: no `return`, no modifier `if`, no
