@@ -15,7 +15,7 @@ gem "gtk4", "~> 4.3"
 gem "adwaita", "~> 4.3"
 
 group :development, :test do
-  gem "minitest", "~> 5.0"
+  gem "minitest", "~> 6.0"
   gem "rake", "~> 13.0"
   # .rubocop.yml is self-contained — DisabledByDefault plus the local cops in
   # cops/ — so it needs rubocop itself and nothing else.
