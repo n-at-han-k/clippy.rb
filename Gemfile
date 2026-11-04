@@ -59,20 +59,25 @@ eval_gemfile "gemfiles/modular/x_std_libs.gemfile"
 
 # See unlocked_deps appraisal for more details on irb inclusion
 gem "irb", "~> 1.17" # ruby >= 2.7
-# libadwaita bindings; pulls in gtk4, glib2, cairo and friends.
-# Building this gem needs libadwaita-1's development files on PKG_CONFIG_PATH.
+# GTK4 bindings. The overlay's window, sprite rendering and gestures are all
+# plain GTK4. Adwaita is declared alongside it although nothing here uses one
+# of its widgets: this repo doubles as the base for Ruby GTK4/Libadwaita apps,
+# and the Nix flake builds both sets of bindings either way.
+#
+# Building these needs gtk4's and libadwaita-1's development files on
+# PKG_CONFIG_PATH; `nix develop` provides them.
+gem 'gtk4', '~> 4.3'
 gem 'adwaita', '~> 4.3'
-
-# QR code generation for the "Share as QR Code" dialog. Upstream links against
-# libqrencode, which has no Ruby binding; rqrcode_core is pure Ruby and the
-# modules are painted with Cairo the same way upstream paints its pixel buffer.
-gem 'rqrcode_core', '~> 2.0'
 
 group :development, :test do
   gem 'minitest', '~> 5.0'
   gem 'rake', '~> 13.0'
 end
 
+# Deprecations as a dated promise: gem_kit declares one at runtime, and
+# gem_kit-release enforces it at release time — `gem kit bump`, `changelog`,
+# `release`. 0.4.0 is the first version that reads a dotted gem name, which
+# this gem has: it resolves clippy.rb to lib/clippy/version.rb rather than to
+# lib/clippy.rb/version.rb, a directory nothing has.
 gem "gem_kit"
-gem "gtk4"
-gem "adwaita"
+gem "gem_kit-release", "~> 0.4", group: :development
