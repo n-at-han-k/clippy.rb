@@ -1,11 +1,5 @@
 # frozen_string_literal: true
 
-# kettle-jem:freeze
-# To retain chunks of comments & code during kettle-jem templating:
-# Wrap custom sections with freeze markers (e.g., as above and below this comment chunk).
-# kettle-jem will then preserve content between those markers across template runs.
-# kettle-jem:unfreeze
-
 Gem::Specification.new do |spec|
   spec.name = "clippy.rb"
   spec.version = Module.new.tap { |mod| Kernel.load("#{__dir__}/lib/clippy/version.rb", mod) }::Clippy::Version::VERSION
@@ -76,7 +70,7 @@ Gem::Specification.new do |spec|
     *enumerate_package_files.call("lib"),
     # Executables and executable support scripts
     *enumerate_package_files.call("exe"),
-    # Extra package files configured by .structuredmerge/kettle-jem.yml
+    # Sprite sheet, animation table and any translations.
     *enumerate_package_glob.call(File.join(gemspec_root, "data/**/*")),
     *enumerate_package_glob.call(File.join(gemspec_root, "po/**/*"))
   ]
@@ -96,46 +90,10 @@ Gem::Specification.new do |spec|
   spec.executables = ["clippy"]
   spec.require_paths = ["lib"]
 
-  # NOTE: It is preferable to list development dependencies in the gemspec due to increased
-  #       visibility and discoverability.
-  #       However, development dependencies in gemspec will install on
-  #       all versions of Ruby that will run in CI.
-  #       This gem, and its gemspec runtime dependencies, will install on Ruby down to 3.4.
-  #       This gem, and its gemspec development dependencies, will install on Ruby down to 3.4.
-  #       Thus, dev dependencies in gemspec must have
-  #
-  #       required_ruby_version ">= 3.4" (or lower)
-  #
-  #       Development dependencies that require strictly newer Ruby versions should be in a "gemfile",
-  #       and preferably a modular one (see gemfiles/modular/*.gemfile).
-
-  # Dev, Test, & Release Tasks
-  spec.add_development_dependency("kettle-dev", "~> 3.1", ">= 3.1.26")             # ruby >= 3.4
-
-  # Security
-  spec.add_development_dependency("bundler-audit", "~> 0.9.3")                      # ruby >= 2.0.0
-
-  # Tasks
-  spec.add_development_dependency("rake", "~> 13.0")                                # ruby >= 2.2.0
-
-  # Debugging
-  spec.add_development_dependency("require_bench", "~> 1.0", ">= 1.0.4")            # ruby >= 2.2.0
-
-  # Testing
-  # Loads version files in anonymous namespaces for coverage without constant redefinition warnings.
-  spec.add_development_dependency("anonymous_loader", "~> 0.1", ">= 0.1.5")         # ruby >= 2.2.0
-  spec.add_development_dependency("appraisal2", "~> 3.2", ">= 3.2.6")               # ruby >= 1.8.7, for testing against multiple versions of dependencies
-  spec.add_development_dependency("kettle-test", "~> 2.0", ">= 2.0.29")            # ruby >= 3.4
-  spec.add_development_dependency("turbo_tests2", "~> 4.0", ">= 4.0.0")           # ruby >= 2.4.0, default kettle-test runner
-
-  # Releasing
-  spec.add_development_dependency("ruby-progressbar", "~> 1.13")                    # ruby >= 0
-  spec.add_development_dependency("stone_checksums", "~> 1.0", ">= 1.0.9")          # ruby >= 2.2.0
-
-  # Development tasks
-  # The cake is a lie. erb v2.2, the oldest release, was never compatible with Ruby 2.3.
-  # This means we have no choice but to use the erb that shipped with Ruby 2.3
-  # /opt/hostedtoolcache/Ruby/2.3.8/x64/lib/ruby/gems/2.3.0/gems/erb-2.2.2/lib/erb.rb:670:in `prepare_trim_mode': undefined method `match?' for "-":String (NoMethodError)
-  # spec.add_development_dependency("erb", ">= 2.2")                                  # ruby >= 2.3.0, not SemVer, old rubies get dropped in a patch.
-  spec.add_development_dependency("gitmoji-regex", "~> 2.0", ">= 2.0.15")            # ruby >= 2.4
+  # Development dependencies. The GTK4 bindings themselves are in the Gemfile
+  # rather than here: they build C extensions against system libraries, so a
+  # `gem install` of this gem should not be made to compile them.
+  spec.add_development_dependency("minitest", "~> 5.0")
+  spec.add_development_dependency("rake", "~> 13.0")
+  spec.add_development_dependency("rubocop", "~> 1.92")
 end

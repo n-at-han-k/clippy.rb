@@ -1,8 +1,9 @@
 # clippy.rb
 
 Clippy as a GTK4 desktop overlay in Ruby. Started from the `gnome-contacts-rb`
-scaffolding (kettle-jem packaging, the Nix flake, the custom cops, the test
-harness); all of that port's application code was removed first.
+repository for its Nix flake, custom cops and test harness; that port's
+application code, and the kettle-jem templating and release toolchain that
+came with it, have both been removed.
 
 ## Skills — use them
 

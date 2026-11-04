@@ -95,10 +95,10 @@
         typelibPath = pkgs.lib.makeSearchPath "lib/girepository-1.0"
           (map (drv: drv.out or drv) (gtkStack ++ [ pkgs.at-spi2-core ]));
 
-        # nix/ and not the repo root: the root Gemfile is kettle-jem's
-        # development bundle — rubocop, rspec, yard, the kettle-dev stack — and
-        # must not end up in a packaged app's runtime closure. nix/Gemfile holds
-        # the gemspec's runtime dependencies only.
+        # nix/ and not the repo root: the root Gemfile carries the development
+        # bundle — minitest, rake, rubocop, the release tooling — and must not
+        # end up in a packaged app's runtime closure. nix/Gemfile holds the
+        # app's runtime dependencies only.
         gems = pkgs.bundlerEnv {
           name = "clippy-gems";
           ruby = pkgs.ruby_3_4;
@@ -194,8 +194,9 @@
             # to support Ruby but only shells out to this, so without it
             # `xgettext --language=Ruby` fails.
             pkgs.rubyPackages_3_4.gettext
-            # The spec runner. The suite is plain RSpec, so this is enough.
-            pkgs.rubyPackages_3_4.rspec
+            # The linter. .rubocop.yml is self-contained — DisabledByDefault
+            # plus the local cops in cops/ — so the plain gem is enough.
+            pkgs.rubocop
             # This machine may have no display server at all, so the shell
             # carries one it can start itself: `xvfb-run ruby exe/<app>` both
             # launches the app and is how test/drive_*.rb is run.
@@ -236,7 +237,8 @@
             echo "clippy devshell — ruby $(ruby -e 'print RUBY_VERSION')"
             echo "run the app:   ruby exe/clippy            (forces GDK_BACKEND=x11 so it can float)"
             echo "drive the app: env -u DISPLAY -u WAYLAND_DISPLAY ruby test/drive_overlay.rb"
-            echo "run the specs: ruby -e 'require \"rspec/core\"; exit RSpec::Core::Runner.run([\"--format\", \"progress\", \"--require\", \"spec_helper\", \"spec\"])'"
+            echo "run the tests: ruby -Ilib -e 'Dir[\"test/test_*.rb\"].each { |f| require File.expand_path(f) }'"
+            echo "lint:          rubocop lib exe test"
           '';
         };
       });
