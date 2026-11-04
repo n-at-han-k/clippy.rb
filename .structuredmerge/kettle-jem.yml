@@ -49,7 +49,7 @@ dependency_conflicts:
     # intentionally resolves version_gem from main to detect upstream changes
     # before release, so both declarations must remain.
     - gem: version_gem
-      direct: "gnome-contacts-rb.gemspec"
+      direct: "clippy.rb.gemspec"
       modular: gemfiles/modular/runtime_heads.gemfile
       action: keep_both
       reason: "The gemspec declares the released runtime contract while runtime_heads intentionally tests version_gem from main."
@@ -340,11 +340,11 @@ min_divergence_threshold: ""
 # Hostname used for generated YARD documentation links.
 # Defaults to <gem-name>.<author-email-domain>.
 # ENV override: KJ_YARD_HOST
-yard_host: "gnome-contacts-rb.github.com"
+yard_host: "clippy.rb.github.com"
 # Full URL used for gemspec metadata["homepage_uri"].
-# Defaults to https://gnome-contacts-rb.github.com.
+# Defaults to https://clippy.rb.github.com.
 # ENV override: KJ_HOMEPAGE_URI
-homepage_uri: "https://gnome-contacts-rb.github.com"
+homepage_uri: "https://clippy.rb.github.com"
 
 # Template source inventory.
 # The packaged inventory is the canonical kettle-jem project template. It

@@ -176,13 +176,46 @@ module GtkDriver
     # GTK4 has no screenshot call. The route that works headlessly is to paint
     # the widget into a render node and hand that to a renderer, which returns
     # a texture that knows how to write a PNG.
+      # The size to snapshot at.
+      #
+      # `widget.width` is the ALLOCATED size, which is zero until the frame
+      # clock has ticked at least once — and a headless frame clock ticks when
+      # it feels like it, so a screenshot taken right after a layout change
+      # intermittently came back as "no render node". The natural size from
+      # `measure` is computed synchronously and is the right fallback.
+      def snapshot_size(widget)
+        [
+          widget.width.positive? ? widget.width : widget.measure(:horizontal, -1)[1],
+          widget.height.positive? ? widget.height : widget.measure(:vertical, -1)[1],
+        ]
+      end
+
+      # Drains the main context so pending layout and frame-clock work lands
+      # before the snapshot. Without it, a widget whose layout was dirtied
+      # earlier in the same step produces no render node at all, and the
+      # screenshot is lost rather than merely stale.
+      def settle
+        GLib::MainContext.default.then do |context|
+          64.times do
+            unless context.pending?
+              break
+            end
+
+            context.iteration(false)
+          end
+        end
+      end
+
       def render(widget, path)
+        settle
+
         Gsk::CairoRenderer.new.tap do |renderer|
           renderer.realize(nil)
 
           begin
             Gtk::Snapshot.new.then do |snapshot|
-              Gtk::WidgetPaintable.new(widget).snapshot(snapshot, widget.width, widget.height)
+              width, height = snapshot_size(widget)
+              Gtk::WidgetPaintable.new(widget).snapshot(snapshot, width, height)
               snapshot.to_node.then do |node|
                 if node.nil?
                   raise 'widget produced no render node (not realised yet?)'

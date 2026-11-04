@@ -6,7 +6,7 @@
 # kettle-jem will then preserve content between those markers across template runs.
 # kettle-jem:unfreeze
 
-# gnome-contacts-rb Rakefile v7.1.29 - 2026-10-12
+# clippy.rb Rakefile v7.1.29 - 2026-10-12
 # Ruby 2.3 (Safe Navigation) or higher required
 #
 # See LICENSE.md for license information.
@@ -30,10 +30,10 @@
 # rake ci:act[opt]                            # Run 'act' with a selected workflow
 # rake coverage                               # Run specs w/ coverage and open results in...
 # rake default                                # Default tasks aggregator
-# rake install                                # Build and install gnome-contacts-rb-1.0.0.gem in...
-# rake install:local                          # Build and install gnome-contacts-rb-1.0.0.gem in...
+# rake install                                # Build and install clippy.rb-1.0.0.gem in...
+# rake install:local                          # Build and install clippy.rb-1.0.0.gem in...
 # rake kettle:jem:install                     # Internal target used by `kettle-jem install`
-# rake kettle:jem:selftest                    # Self-test: template gnome-contacts-rb against itse...
+# rake kettle:jem:selftest                    # Self-test: template clippy.rb against itse...
 # rake kettle:jem:template                    # Internal target used by scoped `kettle-jem template --only`
 # rake reek                                   # Check for code smells
 # rake reek:update                            # Run reek and store the output into the RE...
@@ -178,7 +178,7 @@ Rake::TestTask.new(:test) do |t|
   t.warning = false
 end
 
-desc 'Run the application (BACKEND=json|vcard)'
+desc 'Run the overlay'
 task :run do
-  sh "ruby bin/gnome-contacts-rb #{ENV.fetch('BACKEND', 'json')}"
+  sh "ruby exe/clippy"
 end

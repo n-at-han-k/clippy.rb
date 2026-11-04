@@ -1,33 +1,32 @@
 # Changelog
 
-[![SemVer 2.0.0][📌semver-img]][📌semver] [![Keep-A-Changelog 1.0.0][📗keep-changelog-img]][📗keep-changelog]
-
 All notable changes to this project will be documented in this file.
 
-The format is based on [Keep a Changelog][📗keep-changelog],
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html),
-and [yes][📌major-versions-not-sacred], platform and engine support are part of the [public API][📌semver-breaking].
-Please file a bug if you notice a violation of semantic versioning.
-
-[📌semver]: https://semver.org/spec/v2.0.0.html
-[📌semver-img]: https://img.shields.io/badge/semver-2.0.0-FFDD67.svg?style=flat
-[📌semver-breaking]: https://github.com/semver/semver/issues/716#issuecomment-869336139
-[📌major-versions-not-sacred]: https://tom.preston-werner.com/2022/05/23/major-version-numbers-are-not-sacred.html
-[📗keep-changelog]: https://keepachangelog.com/en/1.0.0/
-[📗keep-changelog-img]: https://img.shields.io/badge/keep--a--changelog-1.0.0-FFDD67.svg?style=flat
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Added
 
-### Changed
+- Clippy as a frameless, transparent GTK4 overlay window, with the original
+  sprite sheet and all 43 animations from the Microsoft Agent format
+  (`data/clippy/`, vendored from clippy.js — see `data/clippy/PROVENANCE.md`).
+- Per-frame animation timing, weighted `branching`, and `exitBranch` handling,
+  so idle animations loop and leave the way the originals did.
+- Speech balloon with a Cairo-drawn tail and a reading-length dwell timer.
+- Always-on-top via the EWMH `_NET_WM_STATE_ABOVE` client message on X11 and
+  Xwayland, with an honest startup message when the session cannot support it.
+- Dragging via `Gdk::Toplevel#begin_move`, a right-click animation menu, and a
+  hover-reveal close button.
+- `exe/clippy` with `--animation`, `--scale`, `--list`, `--wayland`,
+  `--version`.
+- Headless UI driver (`test/drive_overlay.rb`, 32 checks plus screenshots) and
+  unit tests for the agent loader, frame succession, and backend detection.
 
-### Deprecated
+### Notes
 
-### Removed
-
-### Fixed
-
-### Security
-
-[Unreleased]: https://gitlab.com/ruby-gtk-project/gnome-contacts-rb/-/compare/HEAD
+- This repository began as a clone of `gnome-contacts-rb`, kept for its
+  packaging, Nix flake, custom cops and test harness. All of that project's
+  application code was removed before this one was written; the git history
+  before the first Clippy commit is that project's.

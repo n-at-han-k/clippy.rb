@@ -1,0 +1,104 @@
+module Clippy
+  VERSION: String
+
+  module Version
+    VERSION: String
+  end
+
+  class Agent
+    DEFAULT_ROOT: String
+
+    class LoadError < StandardError
+    end
+
+    attr_reader root: String
+    attr_reader scale: Integer
+
+    def initialize: (?root: String, ?scale: Integer) -> void
+    def data: () -> Hash[String, untyped]
+    def frame_size: () -> Array[Integer]
+    def frame_width: () -> Integer
+    def frame_height: () -> Integer
+    def display_width: () -> Integer
+    def display_height: () -> Integer
+    def animation_names: () -> Array[String]
+    def animation?: (String) -> bool
+    def frames: (String) -> Array[Hash[String, untyped]]?
+    def sheet: () -> untyped
+    def texture_at: (Array[Integer]) -> untyped?
+  end
+
+  class Sprite
+    REST_ANIMATION: String
+
+    attr_reader agent: Agent
+
+    def initialize: (agent: Agent) -> void
+    def build: () -> untyped
+    def play: (String) ?{ () -> void } -> void
+    def stop: () -> void
+    def rest: () -> void
+    def playing?: () -> bool
+    def shutdown: () -> void
+    def picture: () -> untyped
+  end
+
+  class Balloon
+    MS_PER_CHARACTER: Integer
+    MIN_DWELL_MS: Integer
+    MAX_DWELL_MS: Integer
+    TAIL_WIDTH: Integer
+    TAIL_HEIGHT: Integer
+
+    def initialize: () -> void
+    def build: () -> untyped
+    def speak: (String, ?dwell: (Integer | Symbol)?) -> void
+    def hide: () -> void
+    def visible?: () -> bool
+    def shutdown: () -> void
+  end
+
+  class AlwaysOnTop
+    RETRY_DELAYS: Array[Integer]
+    STATUSES: Hash[Symbol, String]
+
+    attr_reader status: Symbol?
+
+    def initialize: (untyped) -> void
+    def apply: () -> Symbol
+    def message: () -> String
+    def x11?: () -> bool
+    def wayland?: () -> bool
+  end
+
+  class OverlayWindow
+    GREETINGS: Array[String]
+
+    attr_reader agent: Agent
+    attr_reader sprite: Sprite
+    attr_reader balloon: Balloon
+
+    def initialize: (application: untyped, agent: Agent) -> void
+    def build: () -> untyped
+    def present: () -> AlwaysOnTop
+    def perform: (String, ?text: String?) -> void
+    def shutdown: () -> void
+  end
+
+  class Application
+    APP_ID: String
+    TIPS: Hash[String, String]
+
+    def initialize: (?agent: Agent, ?startup_animation: String) -> void
+    def build: () -> untyped
+    def app: () -> untyped
+    def overlay: () -> OverlayWindow
+  end
+
+  module Styles
+    CSS: String
+
+    def self.install: (?untyped) -> void
+    def self.provider: () -> untyped
+  end
+end

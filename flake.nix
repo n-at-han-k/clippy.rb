@@ -1,5 +1,5 @@
 {
-  description = "gnome-contacts — a Ruby GTK4 port";
+  description = "clippy — a Ruby GTK4 port";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -100,7 +100,7 @@
         # must not end up in a packaged app's runtime closure. nix/Gemfile holds
         # the gemspec's runtime dependencies only.
         gems = pkgs.bundlerEnv {
-          name = "gnome-contacts-gems";
+          name = "clippy-gems";
           ruby = pkgs.ruby_3_4;
           inherit gemConfig;
           gemdir = ./nix;
@@ -119,7 +119,7 @@
       in
       {
         packages.default = pkgs.stdenv.mkDerivation {
-          pname = "gnome-contacts";
+          pname = "clippy";
           version = "0.1.0";
           src = ./.;
 
@@ -136,14 +136,14 @@
           installPhase = ''
             runHook preInstall
 
-            mkdir -p $out/share/gnome-contacts
-            cp -r lib $out/share/gnome-contacts/
+            mkdir -p $out/share/clippy
+            cp -r lib $out/share/clippy/
             for d in ${pkgs.lib.escapeShellArgs optionalDirs}; do
-              cp -r "$d" $out/share/gnome-contacts/
+              cp -r "$d" $out/share/clippy/
             done
-            # exe/ sits next to lib/ so the launcher's `require "gnome-contacts"`
+            # exe/ sits next to lib/ so the launcher's `require "clippy"`
             # resolves against the copied tree.
-            install -Dm755 exe/${launcher} $out/share/gnome-contacts/exe/${launcher}
+            install -Dm755 exe/${launcher} $out/share/clippy/exe/${launcher}
 
             # Compile any GSettings schema the port ships.
             if [ -d data/schemas ]; then
@@ -157,11 +157,12 @@
             # types the cairo gem's C extension has already registered.
             makeWrapper ${gems.wrappedRuby}/bin/ruby $out/bin/${launcher} \
               --add-flags "-rbundler/setup" \
-              --add-flags "-I$out/share/gnome-contacts/lib" \
-              --add-flags "$out/share/gnome-contacts/exe/${launcher}" \
+              --add-flags "-I$out/share/clippy/lib" \
+              --add-flags "$out/share/clippy/exe/${launcher}" \
               --set GI_TYPELIB_PATH "${typelibPath}" \
+              --prefix PATH : "${pkgs.wmctrl}/bin" \
               --prefix XDG_DATA_DIRS : "$out/share" \
-              --prefix XDG_DATA_DIRS : "$out/share/gsettings-schemas/gnome-contacts-0.1.0" \
+              --prefix XDG_DATA_DIRS : "$out/share/gsettings-schemas/clippy-0.1.0" \
               --prefix XDG_DATA_DIRS : "${pkgs.gsettings-desktop-schemas}/share/gsettings-schemas/${pkgs.gsettings-desktop-schemas.name}" \
               --prefix XDG_DATA_DIRS : "${pkgs.gtk4}/share/gsettings-schemas/${pkgs.gtk4.name}" \
               --prefix XDG_DATA_DIRS : "${pkgs.adwaita-icon-theme}/share"
@@ -170,7 +171,7 @@
           '';
 
           meta = {
-            description = "A Ruby GTK4 / Libadwaita port of gnome-contacts";
+            description = "A Ruby GTK4 / Libadwaita port of clippy";
             mainProgram = launcher;
             platforms = pkgs.lib.platforms.linux;
           };
@@ -179,7 +180,7 @@
         apps.default = utils.lib.mkApp { drv = self.packages.${system}.default; };
 
         devShells.default = pkgs.mkShell {
-          name = "gnome-contacts-devshell";
+          name = "clippy-devshell";
 
           packages = [
             gems
@@ -199,6 +200,11 @@
             # carries one it can start itself: `xvfb-run ruby exe/<app>` both
             # launches the app and is how test/drive_*.rb is run.
             pkgs.xvfb-run
+            # Always-on-top is an EWMH client message, not a GTK call (GTK4
+            # removed set_keep_above). lib/clippy/always_on_top.rb shells out
+            # to wmctrl to send it; without this the overlay still runs, it
+            # just does not float.
+            pkgs.wmctrl
             pkgs.gsettings-desktop-schemas
             pkgs.adwaita-icon-theme
           ] ++ gtkStack;
@@ -211,9 +217,9 @@
             export RUBYLIB="$PWD/lib''${RUBYLIB:+:$RUBYLIB}"
             [ -d data/schemas ] && export GSETTINGS_SCHEMA_DIR="$PWD/data/schemas"
             unset BUNDLE_GEMFILE BUNDLE_FROZEN
-            echo "gnome-contacts devshell — ruby $(ruby -e 'print RUBY_VERSION')"
-            echo "run the app:   xvfb-run ruby exe/gnome-contacts"
-            echo "drive the app: xvfb-run ruby test/drive_*.rb"
+            echo "clippy devshell — ruby $(ruby -e 'print RUBY_VERSION')"
+            echo "run the app:   ruby exe/clippy            (forces GDK_BACKEND=x11 so it can float)"
+            echo "drive the app: env -u DISPLAY -u WAYLAND_DISPLAY ruby test/drive_overlay.rb"
             echo "run the specs: ruby -e 'require \"rspec/core\"; exit RSpec::Core::Runner.run([\"--format\", \"progress\", \"--require\", \"spec_helper\", \"spec\"])'"
           '';
         };

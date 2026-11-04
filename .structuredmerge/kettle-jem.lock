@@ -862,15 +862,15 @@ files:
     input_fingerprint: '08ccc28e42767941afaebfae72ab09fe86639d0455b6fdf758a6b23f424c5bc4'
     template_sources:
     - gemfiles/modular/x_std_libs/vHEAD.gemfile.example
-  gnome-contacts-rb.gemspec:
-    recipe: template_source_application_gnome_contacts_rb_gemspec
+  clippy.rb.gemspec:
+    recipe: template_source_application_clippy_gemspec
     action: write
     dest_sha256: a26f1ebafc6789c4d7db70a278ac2dd043c4fcdac4391b1d927abfee15ebfe91
     input_fingerprint: d265c24f0c2c366bfdd14b4903da86570fb71b392f4d1dfd152bde8aaea0ffec
     template_sources:
     - gem.gemspec.example
-  lib/gnome/contacts/rb/version.rb:
-    recipe: template_source_application_lib_gnome_contacts_rb_version_rb
+  lib/clippy/version.rb:
+    recipe: template_source_application_lib_clippy_version_rb
     action: write
     dest_sha256: 62b6bbab3de85e541ea371595df9a29a4bb77e178fcb181a87242f8f377568d7
     input_fingerprint: 0f1fc34e46d83e85036d3824667cf787a4436a4ad7e638a1040086206fdd6264
@@ -890,8 +890,8 @@ files:
     input_fingerprint: c6634c3a1bca4db53eeb4c4cb97f91be446a50a82b9bc9dfac077f79d7840add
     template_sources:
     - parsers.toml.example
-  sig/gnome/contacts/rb.rbs:
-    recipe: template_source_application_sig_gnome_contacts_rb_rbs
+  sig/clippy.rbs:
+    recipe: template_source_application_sig_clippy_rbs
     action: write
     dest_sha256: 877d7ba73eabece126201f0708274c8193964cfaca4834a2e6d882f29e0020ef
     input_fingerprint: c8ab027fa1958ce99bb173f29423020182bd59e5f67e065260ab4d69e4f8e843

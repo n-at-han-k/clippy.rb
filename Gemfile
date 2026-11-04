@@ -15,7 +15,7 @@ git_source(:gitlab) { |repo_name| "https://gitlab.com/#{repo_name}" }
 # Gemfile is for local development ONLY; Gemfile is NOT loaded in CI #
 ####################################################### IMPORTANT ####
 
-# Include dependencies from gnome-contacts-rb.gemspec
+# Include dependencies from clippy.rb.gemspec
 gemspec
 
 gem "kettle-family", "~> 1.3", ">= 1.3.37"

@@ -1,7 +1,7 @@
 # kettle-jem:freeze
-# To retain chunks of comments & code during gnome-contacts-rb templating:
+# To retain chunks of comments & code during clippy.rb templating:
 # Wrap custom sections with freeze markers (e.g., as above and below this comment chunk).
-# gnome-contacts-rb will then preserve content between those markers across template runs.
+# clippy.rb will then preserve content between those markers across template runs.
 # kettle-jem:unfreeze
 
 # Minimum coverage thresholds are set by kettle-soup-cover.

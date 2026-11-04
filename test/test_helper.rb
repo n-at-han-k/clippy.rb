@@ -11,17 +11,19 @@ $LOAD_PATH.unshift(File.expand_path('../lib', __dir__))
 # baffling: signal_connect still returns a handler id, but GLib reports
 # "no handlers connected to the 'activate' signal", and UI tests pass
 # vacuously because their assertions never execute.
-require 'adwaita'
+require 'gtk4'
 require 'minitest/autorun'
 require 'tmpdir'
 require 'fileutils'
 
-# Gives each test its own throwaway XDG data directory, so a test run can
-# never touch the developer's real address book.
-module TempData
+require 'clippy'
+
+# Builds throwaway agent directories, for the paths that must fail loudly
+# rather than surface as a confusing GTK error several frames later.
+module AgentFixtures
   def setup
     super
-    @tmpdir = Dir.mktmpdir('gnome-contacts-rb')
+    @tmpdir = Dir.mktmpdir('clippy')
   end
 
   def teardown
@@ -33,31 +35,22 @@ module TempData
 
   attr_reader :tmpdir
 
-  def json_path = File.join(tmpdir, 'contacts.json')
-  def vcard_dir = File.join(tmpdir, 'vcards')
+  # The real vendored agent, which every rendering test uses.
+  def real_agent(scale: 1) = Clippy::Agent.new(scale: scale)
 
-  # A contact with every field populated, for round-trip assertions.
-  def full_contact_attributes
-    {
-      name:            'Ada Lovelace',
-      nickname:        'Ada',
-      birthday:        '1815-12-10',
-      favorite:        true,
-      alias_name:      'Ada L',
-      structured_name: {
-        given:      'Ada',
-        family:     'Lovelace',
-        additional: 'Byron',
-        prefixes:   'Ms',
-        suffixes:   'FRS',
-      },
-      im_addresses:    [{ value: 'ada@jabber.org', service: 'jabber' }],
-      emails:          [{ value: 'ada@analytical.engine', type: 'Work' }],
-      phones:          [{ value: '+44 20 7946 0100', type: 'Home' }],
-      urls:            [{ value: 'analytical.engine', type: 'Work' }],
-      addresses:       [{ value: '12 Marylebone Rd, London', type: 'Home' }],
-      notes:           [{ value: "First programmer; wrote note G, 1843", type: 'Personal' }],
-      roles:           [{ organization: 'Analytical Engine Co', title: 'Mathematician', type: 'Work' }],
-    }
+  # An agent directory containing `contents` as agent.json and a 2x1 grid of
+  # 4x4 frames as the sheet.
+  def fixture_agent(contents)
+    File.write(File.join(tmpdir, 'agent.json'), JSON.dump(contents))
+    GdkPixbuf::Pixbuf.new(
+      colorspace:      :rgb,
+      has_alpha:       true,
+      bits_per_sample: 8,
+      width:           8,
+      height:          4,
+    ).tap { |pb| pb.fill!(0x00000000) }
+      .save(File.join(tmpdir, 'map.png'), 'png')
+
+    Clippy::Agent.new(root: tmpdir)
   end
 end

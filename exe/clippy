@@ -1,0 +1,71 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Entry point for Clippy.
+#
+#   clippy [OPTION…]
+#
+#   -a, --animation NAME   Animation to play on startup (default: Greeting)
+#   -s, --scale N          Sprite scale factor (default: 2)
+#   -l, --list             List the agent's animations and exit
+#       --wayland          Keep the Wayland backend (see below)
+#   -v, --version          Print the version and exit
+#
+# Why the backend is forced to X11 by default:
+#
+# An always-on-top window is a window-manager policy decision. Wayland gives
+# applications no protocol to request it — wlr-layer-shell exists for the
+# purpose but GNOME's Mutter does not implement it — so on a Wayland session
+# the overlay cannot raise itself above other windows. Under Xwayland the
+# EWMH `_NET_WM_STATE_ABOVE` message works and Mutter honours it. So unless
+# GDK_BACKEND is already set, or --wayland is passed, this asks for X11.
+#
+# `--wayland` is there because everything except always-on-top (transparency,
+# dragging, animation, the balloon) works natively, and a Wayland-native
+# window avoids Xwayland's blurry scaling on a HiDPI display.
+
+require "optparse"
+
+options = {
+  animation: "Greeting",
+  scale:     2,
+  list:      false,
+  wayland:   false,
+}
+
+OptionParser.new do |parser|
+  parser.banner = "Usage: clippy [OPTION…]"
+  parser.on("-a", "--animation NAME", "Animation to play on startup") { |v| options[:animation] = v }
+  parser.on(
+    "-s",
+    "--scale N",
+    Integer,
+    "Sprite scale factor (default: 2)",
+  ) { |v| options[:scale] = v }
+  parser.on("-l", "--list", "List the agent's animations and exit") { options[:list] = true }
+  parser.on("--wayland", "Keep the Wayland backend (no always-on-top)") { options[:wayland] = true }
+  parser.on("-v", "--version", "Print the version and exit") do
+    # Loaded directly so --version does not need GTK, a display, or the assets.
+    require_relative "../lib/clippy/version"
+    puts "clippy #{Clippy::VERSION}"
+    exit 0
+  end
+end.parse!
+
+# Must happen before gtk4 is required: GDK reads this when it initialises, and
+# by the time Clippy is loaded the backend is already chosen.
+unless options[:wayland] || ENV.key?("GDK_BACKEND")
+  ENV["GDK_BACKEND"] = "x11"
+end
+
+require_relative "../lib/clippy"
+
+if options[:list]
+  Clippy::Agent.new.animation_names.each { |name| puts name }
+  exit 0
+end
+
+Clippy::Application.new(
+  agent:             Clippy::Agent.new(scale: options[:scale]),
+  startup_animation: options[:animation],
+).build.run
