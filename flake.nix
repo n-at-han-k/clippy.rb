@@ -216,7 +216,23 @@
             export GI_TYPELIB_PATH="${typelibPath}''${GI_TYPELIB_PATH:+:$GI_TYPELIB_PATH}"
             export RUBYLIB="$PWD/lib''${RUBYLIB:+:$RUBYLIB}"
             [ -d data/schemas ] && export GSETTINGS_SCHEMA_DIR="$PWD/data/schemas"
-            unset BUNDLE_GEMFILE BUNDLE_FROZEN
+
+            # Point bundler at THIS repo.
+            #
+            # Outside the dev shell the ruby on PATH arrives with
+            # BUNDLE_GEMFILE already pointing at a Gemfile in /nix/store, so
+            # every bundler command resolves correctly and then fails trying
+            # to write Gemfile.lock into the store, which is read-only. The
+            # previous `unset` here did not help, because what is being
+            # overridden is not a shell export. Setting it is what the shell
+            # is for: inside `nix develop` ruby and bundler both come from
+            # this flake, and these point them at the checkout.
+            export BUNDLE_GEMFILE="$PWD/Gemfile"
+            export BUNDLE_FROZEN=false
+            export BUNDLE_FORCE_RUBY_PLATFORM=false
+
+            export LANG="''${LANG:-C.UTF-8}"
+            export LC_ALL="''${LC_ALL:-$LANG}"
             echo "clippy devshell — ruby $(ruby -e 'print RUBY_VERSION')"
             echo "run the app:   ruby exe/clippy            (forces GDK_BACKEND=x11 so it can float)"
             echo "drive the app: env -u DISPLAY -u WAYLAND_DISPLAY ruby test/drive_overlay.rb"
