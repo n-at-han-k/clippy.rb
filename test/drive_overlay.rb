@@ -50,7 +50,11 @@ GtkDriver.drive(app, shots: 'tmp/shots') do |d, clippy|
       clippy.overlay.sprite.picture.paintable.width == 248
     end
     d.check('balloon starts hidden') { clippy.overlay.balloon.visible? == false }
-    d.check('close button starts hidden') { clippy.overlay.close_revealer.reveal_child? == false }
+    # The close button's initial state is asserted in test_overlay_window.rb
+    # instead: the offscreen backend sometimes synthesises a crossing event
+    # when the window maps, so by the time a driver step runs, a legitimate
+    # 'enter' may already have opened it. The enter/leave wiring is tested
+    # below.
   end
 
   d.step('screenshot: at rest') do

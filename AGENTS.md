@@ -40,8 +40,17 @@ back to the GTK3 forms.
 
 ```sh
 env -u DISPLAY -u WAYLAND_DISPLAY ruby test/drive_overlay.rb   # UI + screenshots
-ruby test/test_agent.rb test/test_sprite.rb test/test_always_on_top.rb
+env -u DISPLAY -u WAYLAND_DISPLAY ruby -Ilib \
+  -e 'Dir["test/test_*.rb"].each { |f| require File.expand_path(f) }'
 ```
+
+Assert geometry with `Gtk::Widget#measure`, never `allocated_width`/`height`:
+an allocation only catches up when the frame clock ticks, and a headless frame
+clock does not tick reliably — allocation-based checks failed about one run in
+three. Likewise, anything about a widget's state *before* the window is mapped
+belongs in a unit test, not a driver step: the offscreen backend synthesises
+crossing events, so the close button may legitimately be revealed by the time
+the first step runs.
 
 Read the screenshots in `tmp/shots/`, do not just trust the check count. Three
 real bugs in this code were found by looking at them and not by asserting: a

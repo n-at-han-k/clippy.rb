@@ -118,10 +118,11 @@ GTK4 renders offscreen with no display server, so the UI tests need no Xvfb and
 produce real screenshots:
 
 ```sh
-env -u DISPLAY -u WAYLAND_DISPLAY ruby test/drive_overlay.rb   # 32 checks + screenshots in tmp/shots/
-ruby test/test_agent.rb                                        # 10 tests
-ruby test/test_sprite.rb                                       # 10 tests — branching and exit rules
-ruby test/test_always_on_top.rb                                # 7 tests
+env -u DISPLAY -u WAYLAND_DISPLAY ruby test/drive_overlay.rb   # 34 checks + screenshots in tmp/shots/
+ruby test/test_agent.rb                                        # 10 — loading the sheet and cutting frames
+ruby test/test_sprite.rb                                       # 10 — branching and exit rules
+ruby test/test_overlay_window.rb                               #  8 — how the window is put together
+ruby test/test_always_on_top.rb                                #  7 — backend detection
 ```
 
 `rubocop` enforces the custom cops in `cops/`: no `return`, no modifier `if`, no
