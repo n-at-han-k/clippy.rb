@@ -93,7 +93,7 @@ Gem::Specification.new do |spec|
   # Development dependencies. The GTK4 bindings themselves are in the Gemfile
   # rather than here: they build C extensions against system libraries, so a
   # `gem install` of this gem should not be made to compile them.
-  spec.add_development_dependency("minitest", "~> 5.0")
+  spec.add_development_dependency("minitest", "~> 6.1")
   spec.add_development_dependency("rake", "~> 13.0")
   spec.add_development_dependency("rubocop", "~> 1.92")
 end
